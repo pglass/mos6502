@@ -1,0 +1,69 @@
+6502 microprocessor
+	-- Little endian
+	-- 16-bit address bus. Memory locations are specified on the address bus.
+		This means 2**16 memory locations = 65536
+	-- 8-bit CPU. It uses an 8-bit data bus and can only access 8 bits of data in a single instruction.
+		This means values written to memory are only 8-bits wide.
+		This gives a total of (8 bits) * (2 ** 16) = (1 byte) * 65536 = 65536 bytes of memory (or 64 KB)
+	-- Has a two phase clock, providing 2 synchronizations per cycle.
+	-- Registers:
+		A 		8-bit accumulator registor
+		X, Y 	8-bit index registers
+		P 		8-bit processor status register
+		S 		8-bit stack pointer
+		PC 		16-bit program counter (remember there 16-bit addresses)
+
+		- The stack is hardwired to the address range 0x0100 to 0x01FF.
+		Hence the stack pointer register S, which is only 8 bits, specifies only
+		the last 8 bits of the stack's address.
+	- Address ranges:
+		Zero page		0x0000 - 0x00FF
+		Stack			0x0100 - 0x01FF
+		Reserved 		0xFFFA - 0xFFFF
+			NMI handlers 	0xFFFA, 0xFFFB
+			Power on reset  0xFFFC, 0xFFFD
+			BRK handler 	0xFFFE, 0xFFFF
+	- Arithmetic
+		ADC - add with carry
+			This works like you'd expect. Clear the carry before you add.
+			The addition adds an additional 1 only if the carry flag is set.
+			If the addition overflows (> 0xff) then the carry flag will be set.
+		SBC - subtract with carry
+			This works sort of inversely to ADC. Set the carry before you subtract.
+			The subtraction takes away an additional 1 only if the carry flag is cleared/
+			If the subtraction underflows (< 0), the carry flag is *cleared*.
+		Overflow flag
+			This should be set if the sign of a a signed addition doesn't make sense.
+			-- For instance, in unsigned math we have:
+					0x80 + 0x80 = 0x100 (hex)
+					128 + 128 = 256 (dec)
+				But in signed math with only 8 bits, we have:
+					0x80 + 0x80 = 0x00 (hex)
+					-128 + -128 = 0 (dec)
+				which doesn't make sense, we shouldn't be able to add two negatives 
+				and get a positive.
+			-- The overflow flag gets set if:
+				two negatives sum to a positive 	-- both have 0x80 bit set
+					0xff + 0x80 = 0x7f				-- result doesn't have 0x80 set
+					-1 + -128 = 127
+				two positives sum to a negative 	-- neither have 0x80 bit set
+					0x7f + 0x01 = 0x80 				-- result has 0x80 set
+					127 + 1 = -128					
+			-- The overflow flag is not set if 
+				two negatives sum to a negative 	-- both have 0x80 set
+					0xff + 0xff = 0xfe 				-- result has 0x80 set
+					-1 + -1 = -2
+				two positives sum to a positive 	-- neither have 0x80 set
+					0x01 + 0x02 = 0x03 				-- result does not have 0x80 set
+					1 + 2 = 3
+				a negative and a positive are added?
+
+				-- look at bits 6 and 7 in x and y.
+					- if x and y have bit 6 set, then the sum will carry into bit 7
+					- in bit seven we could have:
+							1 + 1 + 1 = 1 and the sign bit is set
+
+					 0x90 	A
+push_16 (HL)         0x8f 	H
+					 0x8e   L
+             --> s = 0x8d   <empty>
